@@ -53,6 +53,10 @@ class Initiate(object):
         parser.add_argument('-v', '--version', action = 'version', version = '%s %s' % (self.progname, __version__), help = 'Show program version')
         parser.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
 
+        parser.add_argument('generate', help = '--help, for subcommands available', nargs = '?') # Divide in 1 command, with costum help message
+        parser.add_argument('daemon', help = '--help, for subcommands available', nargs = '?')
+        parser.add_argument('script', help = '--help, for subcommands available', nargs = '?')
+
         self.args = parser.parse_args()
 
 
