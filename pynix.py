@@ -6,6 +6,7 @@ __license__ = "GPLv3"
 __version__ = 1.0
 
 import sys
+import webbrowser
 
 from argparse import ArgumentParser, SUPPRESS, RawDescriptionHelpFormatter
 from logging import DEBUG, ERROR, FATAL, FileHandler, Formatter, getLogger, INFO, WARNING
@@ -30,7 +31,7 @@ class Initiate(object):
         if self.args.log:
             self.Logging()
 
-        if self.args.generate_yaml: # template generate conf-yaml/log-yaml/bash-completion, positional
+        if self.args.generate_yaml: # template generate conf-yaml/log-yaml/bash-completion/rpm-yaml, positional
             YamGenerate()
 
         # Create positional daemon/script
@@ -44,7 +45,9 @@ class Initiate(object):
                                     --------------------------
                                         Enter description
                                         here.
-                                    '''), epilog = 'Script Template Epilog')
+                                    '''), epilog = dedent('''\
+                                    Check the git repository at https://github.com/flippym/pynix,
+                                    for more information about usage, documentation and bug report.'''))
 
         parser.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
         parser.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
@@ -58,6 +61,10 @@ class Initiate(object):
         parser.add_argument('script', help = '--help, for subcommands available', nargs = '?')
 
         self.args = parser.parse_args()
+
+        if len(sys.argv) == 1: # Returns the help message in case no arguments are provided
+            parser.print_help()
+            raise SystemExit
 
 
     def Reading(self):
@@ -156,6 +163,41 @@ def YamGenerate():
                     - some other things
                 check: yes
             ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
+
+
+def BashCompletion(self):
+
+    with open('/home/%s/.bashrc' % getpass.getuser(), 'w') as bashrc:
+
+        bashrc.write('alias im-a-py=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
+
+    if not os.path.isdir('/etc/bash_completion.d/'):
+        os.makedirs('/etc/bash_completion.d/')
+
+    with open('/etc/bash_completion.d/im-a-py', 'w') as imapy:
+        imapy.write(dedent('''\
+            _im-a-py()
+            {
+                local cur prev opts
+                COMPREPLY=()
+                cur="${COMP_WORDS[COMP_CWORD]}"
+                prev="${COMP_WORDS[COMP_CWORD-1]}"
+                serv="install radio iptv database multi-equip"
+                pack="bash-completion"
+                opts="--help --verbose --version"
+                if [[ ${cur} == -* ]] ; then
+                    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+                    return 0
+                elif [[ $prev == im-a-py ]] ; then
+                    COMPREPLY=( $(compgen -W "${serv}" -- ${cur}) )
+                    return 0
+                elif [[ ${prev} == "install" ]] ; then
+                    COMPREPLY=( $(compgen -W "${pack}" -- ${cur}) )
+                    return 0
+                fi
+            }
+            complete -F _im-a-py im-a-py
+            '''))
 
 
 def ErrHandler(error, value, trace):
