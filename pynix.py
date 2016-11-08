@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 __author__ = "Frederico Martins"
-__email__ = "fredericomartins@outlook.com"
 __license__ = "GPLv3"
 __version__ = 1.0
 
@@ -31,10 +30,8 @@ class Initiate(object):
         if self.args.log:
             self.Logging()
 
-        if self.args.generate_yaml: # template generate conf-yaml/log-yaml/bash-completion/rpm-yaml, positional
+        if self.args.generate_yaml:
             YamGenerate()
-
-        # Create positional daemon/script
 
 
     def Parsing(self):
@@ -49,22 +46,54 @@ class Initiate(object):
                                     Check the git repository at https://github.com/flippym/pynix,
                                     for more information about usage, documentation and bug report.'''))
 
-        parser.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
-        parser.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
-        parser.add_argument('-e', '--event', metavar = 'lv', choices = self.loglevel, help = 'Event log level: %s\n(default: info)' % ', '.join(self.loglevel), required = False, default = 'info')
-        parser.add_argument('-g', '--generate-yaml', action = 'store_true', help = 'Generate YAML template file in the script current directory')
-        parser.add_argument('-v', '--version', action = 'version', version = '%s %s' % (self.progname, __version__), help = 'Show program version')
-        parser.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        subparser = parser.add_subparsers(title='Positional', metavar='command')
 
-        parser.add_argument('generate', help = '--help, for subcommands available', nargs = '?') # Divide in 1 command, with costum help message
-        parser.add_argument('daemon', help = '--help, for subcommands available', nargs = '?')
-        parser.add_argument('script', help = '--help, for subcommands available', nargs = '?')
+        genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
+        gensub = genparser.add_subparsers(title='Positional', metavar='subcommand')
+        gensub.required = True
+
+        gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False)
+        gensub.add_parser('program-configuration', help='Generate YAML template file for optional configurations', add_help=False)
+        gensub.add_parser('log-configuration', help='Generate YAML template file for log configurations', add_help=False)
+        gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
+        gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
+        optional = genparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        
+        daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
+        daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
+        daemonsub.required = True
+        daemonsub.add_parser('disable', help='Remove daemon from system startup').set_defaults(func=self.Reading)
+        daemonsub.add_parser('enable', help='Add daemon to system startup')
+        daemonsub.add_parser('reload', help='Reload daemon configurations')
+        daemonsub.add_parser('status', help='Check daemon running status')
+        daemonsub.add_parser('start', help='Initiate program as daemon')
+        daemonsub.add_parser('stop', help='Stop daemon program')
+        optional = daemonparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        
+        scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
+        scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
+        scriptsub.required = True
+        scriptsub.add_parser('run', help='Daemon program management', add_help=False)
+        optional = scriptparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+
+        optional = parser.add_argument_group('Optional')
+        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
+        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
+        optional.add_argument('-e', '--event', metavar = 'lv', choices = self.loglevel, help = 'Event log level: %s\n(default: info)' % ', '.join(self.loglevel), required = False, default = 'info')
+        optional.add_argument('-g', '--generate-yaml', action = 'store_true', help = 'Generate YAML template file in the script current directory')
+        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (self.progname, __version__), help = 'Show program version')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
 
         self.args = parser.parse_args()
 
         if len(sys.argv) == 1: # Returns the help message in case no arguments are provided
             parser.print_help()
             raise SystemExit
+
+        self.args.func()
 
 
     def Reading(self):
