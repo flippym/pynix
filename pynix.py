@@ -170,8 +170,8 @@ def DirCreate(directory):
 
 def LogWrite(string, level = 'info'):
 
-    if hasattr(Initiate, 'logger'):
-        Initiate.logger.log(Initiate.loglevel[level], string)
+    if logger:
+        logger.log(Initiate.loglevel[level], string)
 
     else: #level == args.event: # When the event level is set, it will only print above levels
         print(string)
@@ -240,8 +240,8 @@ def ErrHandler(error, value, trace):
     LogWrite('Uncaught exception\nTraceback (most recent call last):\n%s%s: %s' % (trace, error.__name__, value), 'debug')
 
 
-#Initiate()
+logger = Initiate().logger
 
-LogWrite('Starting script execution')
+#LogWrite('Starting script execution')
 # ... Code goes here ...
-LogWrite('Script execution ended')
+#LogWrite('Script execution ended')
