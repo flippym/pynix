@@ -2,6 +2,13 @@
 
 __version__ = 2.0
 
-from pynix import Initiate
+import pynix
 
-Initiate()
+
+pynix = pynix.Initiate()
+
+pynix.Logger.LogWrite('Starting script execution')
+# ... Code goes here ...
+raise KeyError
+# ... Code goes here ...
+pynix.Logger.LogWrite('Script execution ended')

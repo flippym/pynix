@@ -28,75 +28,18 @@ class Initiate(object):
 
     def __init__(self):
 
-        self.Parsing() # keep only class Parsing in this file, with function __init__ instead of function Parsing. Put all others in another file for import | Lib project
+        self.Parser = Parsing()
+        #self.Reading = Reading()
+        #Concatenate() # Put all Parsing arguments and Reading parameters as the same variable, giving priority to parser
+        self.Logger = Logging(self.Parser.args)
+
+        sys.excepthook = self.Logger.ErrHandler
 
         #if self.args.yaml:
         #    self.Reading()
 
-        if self.args.log:
-            self.logger = self.Logging()
-
-
-    def Parsing(self):
-                
-        parser = ArgumentParser(prog = 'python3 %s' % self.progname, add_help = False, formatter_class = RawDescriptionHelpFormatter,
-                                description = dedent('''\
-                                    Pynix RHEL Framework !
-                                    ----------------------
-                                      RHEL framework for
-                                      running daemons 
-                                      and scripts.
-                                    '''), epilog = dedent('''\
-                                    Check the git repository at https://github.com/flippym/pynix,
-                                    for more information about usage, documentation and bug report.'''))
-
-        subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', metavar='<command>')
-
-        genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
-        gensub = genparser.add_subparsers(title='Positional', metavar='<subcommand>')
-        gensub.required = True
-
-        gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False).set_defaults(func=BashCompletion)
-        #gensub.add_parser('program-yaml', help='Generate YAML template file for optional configurations', add_help=False).set_defaults(func=YamGenerate)
-        gensub.add_parser('log-yaml', help='Generate YAML template file for log configurations', add_help=False)
-        gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
-        gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
-        optional = genparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-        
-        daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
-        daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
-        daemonsub.required = True
-        daemonsub.add_parser('disable', help='Remove daemon from system startup').set_defaults(func=self.Reading)
-        daemonsub.add_parser('enable', help='Add daemon to system startup')
-        daemonsub.add_parser('reload', help='Reload daemon configurations')
-        daemonsub.add_parser('status', help='Check daemon running status')
-        daemonsub.add_parser('start', help='Initiate program as daemon')
-        daemonsub.add_parser('stop', help='Stop daemon program')
-        optional = daemonparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-        
-        scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
-        scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
-        scriptsub.required = True
-        scriptsub.add_parser('run', help='Daemon program management', add_help=False)
-        optional = scriptparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-
-        optional = parser.add_argument_group('Optional')
-        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
-        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
-        optional.add_argument('-e', '--event', metavar = 'lvl', choices = self.loglevel.keys(), help = 'Event log level: %s\n(default: info)' % ', '.join(self.loglevel.keys()), required = False, default = 'info')
-        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (self.progname, __version__), help = 'Show program version')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-
-        self.args = parser.parse_args()
-
-        if len(argv) == 1: # Returns the help message in case no arguments are provided
-            parser.print_help()
-            raise SystemExit
-
-        #self.args.func()
+        #if self.args.log:
+        #    self.logger = self.Logging()
 
 
     def Reading(self):
@@ -128,25 +71,90 @@ class Initiate(object):
             LogWrite("Warning, key %s in '%s' not defined" % (error, each))
 
 
-    def Logging(self): # Consider loading from yaml file
+class Parsing(object):
 
-        DirCreate(path.realpath(self.args.log).rpartition('/')[0]) # path.realpath to prevent error when the full path ain't specified
-        sys.excepthook = ErrHandler # For removal, place in main script
+    def __init__(self):
+        
+        parser = ArgumentParser(prog = 'python3 %s' % Initiate.progname, add_help = False, formatter_class = RawDescriptionHelpFormatter,
+                                description = dedent('''\
+                                    Pynix RHEL Framework !
+                                    ----------------------
+                                      RHEL framework for
+                                      running daemons 
+                                      and scripts.
+                                    '''), epilog = dedent('''\
+                                    Check the git repository at https://github.com/flippym/pynix,
+                                    for more information about usage, documentation and bug report.'''))
 
-        logger = getLogger(__name__)
+        subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', metavar='<command>')
+
+        genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
+        gensub = genparser.add_subparsers(title='Positional', metavar='<subcommand>')
+        gensub.required = True
+
+        gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False)#.set_defaults(func=BashCompletion)
+        #gensub.add_parser('program-yaml', help='Generate YAML template file for optional configurations', add_help=False).set_defaults(func=YamGenerate)
+        gensub.add_parser('log-yaml', help='Generate YAML template file for log configurations', add_help=False)
+        gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
+        gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
+        optional = genparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        
+        daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
+        daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
+        daemonsub.required = True
+        daemonsub.add_parser('disable', help='Remove daemon from system startup')#.set_defaults(func=self.Reading)
+        daemonsub.add_parser('enable', help='Add daemon to system startup')
+        daemonsub.add_parser('reload', help='Reload daemon configurations')
+        daemonsub.add_parser('status', help='Check daemon running status')
+        daemonsub.add_parser('start', help='Initiate program as daemon')
+        daemonsub.add_parser('stop', help='Stop daemon program')
+        optional = daemonparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        
+        scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
+        scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
+        scriptsub.required = True
+        scriptsub.add_parser('run', help='Daemon program management', add_help=False)
+        optional = scriptparser.add_argument_group('Optional')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+
+        optional = parser.add_argument_group('Optional')
+        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
+        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
+        optional.add_argument('-e', '--event', metavar = 'lvl', choices = Initiate.loglevel.keys(), help = 'Event log level: %s\n(default: info)' % ', '.join(Initiate.loglevel.keys()), required = False, default = 'info')
+        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (Initiate.progname, __version__), help = 'Show program version')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+
+        self.args = parser.parse_args()
+
+        if len(argv) == 1: # Returns the help message in case no arguments are provided
+            parser.print_help()
+            raise SystemExit
+
+        #self.args.func()
+
+
+class Logging(object): # Consider loading from yaml file
+
+    def __init__(self, args):
+
+        path.realpath(args.log).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
+
+        self.logger = getLogger(__name__)
 
         try:
-            handler = FileHandler(self.args.log)
+            handler = FileHandler(args.log)
             formatter = Formatter(fmt='%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%d %b %Y %H:%M:%S')
 
-            if self.args.event:
-                level = self.loglevel[self.args.event]
-                logger.setLevel(level)
+            if args.event:
+                level = Initiate.loglevel[args.event]
+                self.logger.setLevel(level)
                 handler.setLevel(level)
 
             else:
-                logger.setLevel(self.loglevel['info'])
-                handler.setLevel(self.loglevel['info'])
+                self.logger.setLevel(Initiate.loglevel['info'])
+                handler.setLevel(Initiate.loglevel['info'])
         
         except (ValueError, NameError):
             LogWrite("Unknown log level in YAML file")
@@ -157,24 +165,24 @@ class Initiate(object):
             raise SystemExit
 
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
-
-        return logger
+        self.logger.addHandler(handler)
 
 
-def DirCreate(directory):
+    def LogWrite(self, string, level = 'info'):
 
-    if not path.exists(directory):
-        makedirs(directory)
+        if self.logger:
+            self.logger.log(Initiate.loglevel[level], string)
+
+        else: #level == args.event: # When the event level is set, it will only print above levels
+            print(string)
 
 
-def LogWrite(string, level = 'info'):
+    def ErrHandler(self, error, value, trace):
 
-    if logger:
-        logger.log(Initiate.loglevel[level], string)
+        trace = ''.join(format_tb(trace))
 
-    else: #level == args.event: # When the event level is set, it will only print above levels
-        print(string)
+        self.LogWrite('Uncaught exception: %s' % (error.__name__), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
+        self.LogWrite('Uncaught exception\nTraceback (most recent call last):\n%s%s: %s' % (trace, error.__name__, value), 'debug')
 
 
 def YamGenerate():
@@ -230,18 +238,3 @@ def BashCompletion(self):
             }
             complete -F _im-a-py im-a-py
             '''))
-
-
-def ErrHandler(error, value, trace):
-
-    trace = ''.join(format_tb(trace))
-
-    LogWrite('Uncaught exception: %s' % (error.__name__), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
-    LogWrite('Uncaught exception\nTraceback (most recent call last):\n%s%s: %s' % (trace, error.__name__, value), 'debug')
-
-
-logger = Initiate().logger
-
-#LogWrite('Starting script execution')
-# ... Code goes here ...
-#LogWrite('Script execution ended')
