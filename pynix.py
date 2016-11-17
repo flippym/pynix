@@ -5,7 +5,6 @@ __license__ = "GPLv3"
 __version__ = 1.0
 
 import sys
-import webbrowser # To open the browser git repo
 
 try:
     from __main__ import __file__, __version__
@@ -109,8 +108,8 @@ class Parsing(object):
         daemonsub.add_parser('status', help='Check daemon running status')
         daemonsub.add_parser('start', help='Initiate program as daemon')
         daemonsub.add_parser('stop', help='Stop daemon program')
-        optional = daemonparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        #optional = daemonparser.add_argument_group('Optional')
+        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
         
         scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
         scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
@@ -119,12 +118,8 @@ class Parsing(object):
         optional = scriptparser.add_argument_group('Optional')
         optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
 
-        optional = parser.add_argument_group('Optional')
-        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
-        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
-        optional.add_argument('-e', '--event', metavar = 'lvl', choices = Initiate.loglevel.keys(), help = 'Event log level: %s\n(default: info)' % ', '.join(Initiate.loglevel.keys()), required = False, default = 'info')
-        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (Initiate.progname, __version__), help = 'Show program version')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        self.Optional(parser)
+        #self.Optional(daemonparser)
 
         self.args = parser.parse_args()
 
@@ -135,11 +130,21 @@ class Parsing(object):
         #self.args.func()
 
 
+    def Optional(self, parser):
+
+        optional = parser.add_argument_group('Optional')
+        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
+        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
+        optional.add_argument('-e', '--event', metavar = 'lvl', choices = Initiate.loglevel.keys(), help = 'Event log level: %s\n(default: info)' % ', '.join(Initiate.loglevel.keys()), required = False, default = 'info')
+        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (Initiate.progname, __version__), help = 'Show program version')
+        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+
+
 class Logging(object): # Consider loading from yaml file
 
     def __init__(self, args):
 
-        path.realpath(args.log).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
+        #path.realpath(args.log).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
 
         self.logger = getLogger(__name__)
 
@@ -185,56 +190,60 @@ class Logging(object): # Consider loading from yaml file
         self.LogWrite('Uncaught exception\nTraceback (most recent call last):\n%s%s: %s' % (trace, error.__name__, value), 'debug')
 
 
-def YamGenerate():
+class Generate(object):
 
-    newyaml = path.realpath(__file__).replace('.py', '.yaml')
+    def YamGenerate():
 
-    if path.isfile(newyaml):
-        LogWrite("The file %s already exists." % newyaml)
-        raise SystemExit
+        newyaml = path.realpath(__file__).replace('.py', '.yaml')
 
-    with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
-        openyaml.write(dedent('''\
-            log:
-                path: /var/log/%s/%s
-                level: info
-            other:
-                something:
-                    - some other things
-                check: yes
-            ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
+        if path.isfile(newyaml):
+            LogWrite("The file %s already exists." % newyaml)
+            raise SystemExit
+
+        with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
+            openyaml.write(dedent('''\
+                log:
+                    path: /var/log/%s/%s
+                    level: info
+                other:
+                    something:
+                        - some other things
+                    check: yes
+                ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
 
 
-def BashCompletion(self):
+    def BashCompletion():
 
-    with open('/home/%s/.bashrc' % getpass.getuser(), 'w') as bashrc:
+        with open('/home/%s/.bashrc' % getpass.getuser(), 'w') as bashrc:
 
-        bashrc.write('alias im-a-py=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
+            bashrc.write('alias im-a-py=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
 
-    if not os.path.isdir('/etc/bash_completion.d/'):
-        os.makedirs('/etc/bash_completion.d/')
+        if not os.path.isdir('/etc/bash_completion.d/'):
+            os.makedirs('/etc/bash_completion.d/')
 
-    with open('/etc/bash_completion.d/im-a-py', 'w') as imapy:
-        imapy.write(dedent('''\
-            _im-a-py()
-            {
-                local cur prev opts
-                COMPREPLY=()
-                cur="${COMP_WORDS[COMP_CWORD]}"
-                prev="${COMP_WORDS[COMP_CWORD-1]}"
-                serv="install radio iptv database multi-equip"
-                pack="bash-completion"
-                opts="--help --verbose --version"
-                if [[ ${cur} == -* ]] ; then
-                    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
-                    return 0
-                elif [[ $prev == im-a-py ]] ; then
-                    COMPREPLY=( $(compgen -W "${serv}" -- ${cur}) )
-                    return 0
-                elif [[ ${prev} == "install" ]] ; then
-                    COMPREPLY=( $(compgen -W "${pack}" -- ${cur}) )
-                    return 0
-                fi
-            }
-            complete -F _im-a-py im-a-py
-            '''))
+        with open('/etc/bash_completion.d/im-a-py', 'w') as imapy:
+            imapy.write(dedent('''\
+                _im-a-py()
+                {
+                    local cur prev opts
+                    COMPREPLY=()
+                    cur="${COMP_WORDS[COMP_CWORD]}"
+                    prev="${COMP_WORDS[COMP_CWORD-1]}"
+                    serv="install radio iptv database multi-equip"
+                    pack="bash-completion"
+                    opts="--help --verbose --version"
+                    if [[ ${cur} == -* ]] ; then
+                        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+                        return 0
+                    elif [[ $prev == im-a-py ]] ; then
+                        COMPREPLY=( $(compgen -W "${serv}" -- ${cur}) )
+                        return 0
+                    elif [[ ${prev} == "install" ]] ; then
+                        COMPREPLY=( $(compgen -W "${pack}" -- ${cur}) )
+                        return 0
+                    fi
+                }
+                complete -F _im-a-py im-a-py
+                '''))
+
+Initiate()
