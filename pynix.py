@@ -85,38 +85,45 @@ class Parsing(object):
                                     Check the git repository at https://github.com/flippym/pynix,
                                     for more information about usage, documentation and bug report.'''))
 
-        subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', metavar='<command>')
+        self.subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', metavar='<command>')
 
-        genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
-        gensub = genparser.add_subparsers(title='Positional', metavar='<subcommand>')
-        gensub.required = True
+        generate = {'bash-completion':
+                        {'help':'Generate bash-completion for program', 'func':Generate.BashCompletion},
+                    'program-yaml':
+                        {'help':'Generate YAML template file for optional configurations', 'func':Generate.YamGenerate},
+                   }
 
-        gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False)#.set_defaults(func=BashCompletion)
+        self.Subparser('generate', {'generate':'Generate template files', 'bash-completion':'testmessage', 'program-yaml':'test'}, generate)
+        #genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
+        #gensub = genparser.add_subparsers(title='Positional', metavar='<subcommand>')
+        #gensub.required = True
+
+        #gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False)#.set_defaults(func=BashCompletion)
         #gensub.add_parser('program-yaml', help='Generate YAML template file for optional configurations', add_help=False).set_defaults(func=YamGenerate)
-        gensub.add_parser('log-yaml', help='Generate YAML template file for log configurations', add_help=False)
-        gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
-        gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
-        optional = genparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        #gensub.add_parser('log-yaml', help='Generate YAML template file for log configurations', add_help=False)
+        #gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
+        #gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
+        #optional = genparser.add_argument_group('Optional')
+        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
         
-        daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
-        daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
-        daemonsub.required = True
-        daemonsub.add_parser('disable', help='Remove daemon from system startup')#.set_defaults(func=self.Reading)
-        daemonsub.add_parser('enable', help='Add daemon to system startup')
-        daemonsub.add_parser('reload', help='Reload daemon configurations')
-        daemonsub.add_parser('status', help='Check daemon running status')
-        daemonsub.add_parser('start', help='Initiate program as daemon')
-        daemonsub.add_parser('stop', help='Stop daemon program')
+        #daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
+        #daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
+        #daemonsub.required = True
+        #daemonsub.add_parser('disable', help='Remove daemon from system startup')#.set_defaults(func=self.Reading)
+        #daemonsub.add_parser('enable', help='Add daemon to system startup')
+        #daemonsub.add_parser('reload', help='Reload daemon configurations')
+        #daemonsub.add_parser('status', help='Check daemon running status')
+        #daemonsub.add_parser('start', help='Initiate program as daemon')
+        #daemonsub.add_parser('stop', help='Stop daemon program')
         #optional = daemonparser.add_argument_group('Optional')
         #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
         
-        scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
-        scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
-        scriptsub.required = True
-        scriptsub.add_parser('run', help='Daemon program management', add_help=False)
-        optional = scriptparser.add_argument_group('Optional')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        #scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
+        #scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
+        #scriptsub.required = True
+        #scriptsub.add_parser('run', help='Daemon program management', add_help=False)
+        #optional = scriptparser.add_argument_group('Optional')
+        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
 
         self.Optional(parser)
         #self.Optional(daemonparser)
@@ -128,6 +135,20 @@ class Parsing(object):
             raise SystemExit
 
         #self.args.func()
+
+
+    def Subparser(self, name, parsers):
+
+        parser = self.subparser.add_parser(name, help=parsers[name]['help'], add_help=False)
+        subparser = parser.add_subparsers(title='Positional', metavar='<subcommand>')
+        subparser.required = True
+
+        for each in parsers:
+            positional = subparser.add_parser(each, help=parsers[each]['help'], add_help=False)
+            positional.set_defaults(func=parsers[each]['func'])
+            self.Optional(positional)
+
+        self.Optional(parser)
 
 
     def Optional(self, parser):

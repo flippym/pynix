@@ -7,7 +7,7 @@ Pynix is a Python framework for RHEL-like operative systems, which creates parsi
 
 ## Installation
 
-The only dependencies needed by the server are listed below.
+The only dependencies needed by the framework are listed below.
 
 Needed packages:
 - [Python3](https://www.python.org/download/releases/3.0/)
