@@ -74,8 +74,8 @@ class Parsing(object):
 
     def __init__(self):
         
-        parser = ArgumentParser(prog = 'python3 %s' % Initiate.progname, add_help = False, formatter_class = RawDescriptionHelpFormatter,
-                                description = dedent('''\
+        parser = ArgumentParser(prog='python3 {}'.format(Initiate.progname), add_help=False, 
+                                formatter_class=RawDescriptionHelpFormatter, description = dedent('''\
                                     Pynix RHEL Framework !
                                     ----------------------
                                       RHEL framework for
@@ -85,49 +85,14 @@ class Parsing(object):
                                     Check the git repository at https://github.com/flippym/pynix,
                                     for more information about usage, documentation and bug report.'''))
 
-        self.subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', metavar='<command>')
+        self.subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', 
+                                               metavar='<command>')
+        subparsers = self.Generate()
 
-        generate = {'bash-completion':
-                        {'help':'Generate bash-completion for program', 'func':Generate.BashCompletion},
-                    'program-yaml':
-                        {'help':'Generate YAML template file for optional configurations', 'func':Generate.YamGenerate},
-                   }
+        for sub in subparsers:
+            self.Subparser(sub)
 
-        self.Subparser('generate', {'generate':'Generate template files', 'bash-completion':'testmessage', 'program-yaml':'test'}, generate)
-        #genparser = subparser.add_parser('generate', help='Generate template files', add_help=False)
-        #gensub = genparser.add_subparsers(title='Positional', metavar='<subcommand>')
-        #gensub.required = True
-
-        #gensub.add_parser('bash-completion', help='Generate bash-completion for program', add_help=False)#.set_defaults(func=BashCompletion)
-        #gensub.add_parser('program-yaml', help='Generate YAML template file for optional configurations', add_help=False).set_defaults(func=YamGenerate)
-        #gensub.add_parser('log-yaml', help='Generate YAML template file for log configurations', add_help=False)
-        #gensub.add_parser('rpm-spec', help='Generate SPEC template file for RPM building', add_help=False)
-        #gensub.add_parser('systemd-unit', help='Generate UNIT template file for integration with systemd', add_help=False)
-        #optional = genparser.add_argument_group('Optional')
-        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-        
-        #daemonparser = subparser.add_parser('daemon', help='Daemon program management', add_help=False) # YAML
-        #daemonsub = daemonparser.add_subparsers(title='Positional', metavar='subcommand')
-        #daemonsub.required = True
-        #daemonsub.add_parser('disable', help='Remove daemon from system startup')#.set_defaults(func=self.Reading)
-        #daemonsub.add_parser('enable', help='Add daemon to system startup')
-        #daemonsub.add_parser('reload', help='Reload daemon configurations')
-        #daemonsub.add_parser('status', help='Check daemon running status')
-        #daemonsub.add_parser('start', help='Initiate program as daemon')
-        #daemonsub.add_parser('stop', help='Stop daemon program')
-        #optional = daemonparser.add_argument_group('Optional')
-        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-        
-        #scriptparser = subparser.add_parser('script', help='Script program execution', add_help=False)
-        #scriptsub = scriptparser.add_subparsers(title='Positional', metavar='subcommand')
-        #scriptsub.required = True
-        #scriptsub.add_parser('run', help='Daemon program management', add_help=False)
-        #optional = scriptparser.add_argument_group('Optional')
-        #optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
-
-        self.Optional(parser)
-        #self.Optional(daemonparser)
-
+        self.Optional(parser, True)
         self.args = parser.parse_args()
 
         if len(argv) == 1: # Returns the help message in case no arguments are provided
@@ -137,11 +102,51 @@ class Parsing(object):
         #self.args.func()
 
 
-    def Subparser(self, name, parsers):
+    def Generate(self): # Subparsers are defined here with the following syntax
+        
+        generate = {'_name':'generate', '_help':'Generate template files',
+                    'bash-completion':
+                        {'help':'Generate bash-completion for program', 'func':Generate.BashCompletion},
+                    'conf':
+                        {'help':'Generate YAML template file for optional configurations', 'func':Generate.Conf},
+                    'log':
+                        {'help':'Generate YAML template file for log configurations', 'func':Generate.Log},
+                    'spec':
+                        {'help':'Generate SPEC template file for RPM building', 'func':Generate.Spec},
+                    'unit':
+                        {'help':'Generate UNIT template file for integration with systemd', 'func':Generate.Unit},
+                   }
 
-        parser = self.subparser.add_parser(name, help=parsers[name]['help'], add_help=False)
+        daemon = {'_name':'daemon', '_help':'Daemon program management',
+                    'disable':
+                        {'help':'Remove daemon from system startup', 'func':Daemon.Disable},
+                    'enable':
+                        {'help':'Add daemon to system startup', 'func':Daemon.Enable},
+                    'reload':
+                        {'help':'Reload daemon configurations', 'func':Daemon.Reload},
+                    'start':
+                        {'help':'Initiate program as daemon', 'func':Daemon.Start},
+                    'status':
+                        {'help':'Check daemon running status', 'func':Daemon.Status},
+                    'stop':
+                        {'help':'Stop daemon program', 'func':Daemon.Stop},
+                 }
+
+        script = {'_name':'script', '_help':'Script program management',
+                    'run':
+                        {'help':'Initiate program as a script', 'func':Script.Run},
+                 }
+
+        return generate, daemon, script
+
+
+    def Subparser(self, parsers: dict) -> None:
+
+        parser = self.subparser.add_parser(parsers['_name'], help=parsers['_help'], add_help=False)
         subparser = parser.add_subparsers(title='Positional', metavar='<subcommand>')
         subparser.required = True
+
+        del parsers['_name'], parsers['_help']
 
         for each in parsers:
             positional = subparser.add_parser(each, help=parsers[each]['help'], add_help=False)
@@ -151,14 +156,19 @@ class Parsing(object):
         self.Optional(parser)
 
 
-    def Optional(self, parser):
+    def Optional(self, parser: object, version=False) -> None:
 
         optional = parser.add_argument_group('Optional')
-        optional.add_argument('-l', '--log', metavar = 'file', type = str, help = 'Log file path for event logging', required = False)
-        optional.add_argument('-y', '--yaml', metavar = 'file', type = str, help = 'YAML file path for script configuration', required = False)
-        optional.add_argument('-e', '--event', metavar = 'lvl', choices = Initiate.loglevel.keys(), help = 'Event log level: %s\n(default: info)' % ', '.join(Initiate.loglevel.keys()), required = False, default = 'info')
-        optional.add_argument('-v', '--version', action = 'version', version = '%s %s' % (Initiate.progname, __version__), help = 'Show program version')
-        optional.add_argument('-h', '--help', action = 'help', help = 'Show this help message')
+        optional.add_argument('-c', '--conf', metavar='file', type=str, help='Configuration file path for parameters configuration', required=False)
+        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(', '.join(Initiate.loglevel.keys())), required=False, default='info')
+        optional.add_argument('-l', '--log', metavar='file', type=str, help='Redirect all output to log file for event logging', required=False)
+        optional.add_argument('-h', '--help', action='help', help='Show this help message')
+
+        if version:
+            optional.add_argument('-v', '--version', action='version', version='{0} {1}'.format(Initiate.progname, __version__), help='Show program version')
+
+        #if parser.getname() == 'generate':
+        #    optional.add_argument('-p', '--path', metavar='file', type=str, help='Specify path and file name for file generation')
 
 
 class Logging(object): # Consider loading from yaml file
@@ -213,26 +223,6 @@ class Logging(object): # Consider loading from yaml file
 
 class Generate(object):
 
-    def YamGenerate():
-
-        newyaml = path.realpath(__file__).replace('.py', '.yaml')
-
-        if path.isfile(newyaml):
-            LogWrite("The file %s already exists." % newyaml)
-            raise SystemExit
-
-        with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
-            openyaml.write(dedent('''\
-                log:
-                    path: /var/log/%s/%s
-                    level: info
-                other:
-                    something:
-                        - some other things
-                    check: yes
-                ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
-
-
     def BashCompletion():
 
         with open('/home/%s/.bashrc' % getpass.getuser(), 'w') as bashrc:
@@ -266,5 +256,80 @@ class Generate(object):
                 }
                 complete -F _im-a-py im-a-py
                 '''))
+
+
+    def Conf():
+
+        newyaml = path.realpath(__file__).replace('.py', '.yaml')
+
+        if path.isfile(newyaml):
+            LogWrite("The file %s already exists." % newyaml)
+            raise SystemExit
+
+        with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
+            openyaml.write(dedent('''\
+                log:
+                    path: /var/log/%s/%s
+                    level: info
+                other:
+                    something:
+                        - some other things
+                    check: yes
+                ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
+
+
+    def Log():
+
+        pass
+
+
+    def Spec():
+
+        pass
+
+
+    def Unit():
+
+        pass
+
+
+class Daemon(object):
+
+    def Disable():
+
+        pass
+
+
+    def Enable():
+
+        pass
+
+
+    def Reload():
+
+        pass
+
+
+    def Start():
+
+        pass
+
+
+    def Status():
+
+        pass
+
+
+    def Stop():
+
+        pass
+
+
+class Script(object):
+
+    def Run():
+
+        pass
+
 
 Initiate()
