@@ -12,6 +12,8 @@ except ImportError:
     pass
 
 from argparse import ArgumentParser, SUPPRESS, RawDescriptionHelpFormatter
+from collections import OrderedDict
+from getpass import getuser
 from logging import FileHandler, Formatter, getLogger
 from os import makedirs, path
 from sys import argv
@@ -30,9 +32,9 @@ class Initiate(object):
         self.Parser = Parsing()
         #self.Reading = Reading()
         #Concatenate() # Put all Parsing arguments and Reading parameters as the same variable, giving priority to parser
-        self.Logger = Logging(self.Parser.args)
+        #self.Logger = Logging(self.Parser.args)
 
-        sys.excepthook = self.Logger.ErrHandler
+        #sys.excepthook = self.Logger.ErrHandler
 
         #if self.args.yaml:
         #    self.Reading()
@@ -87,9 +89,8 @@ class Parsing(object):
 
         self.subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', 
                                                metavar='<command>')
-        subparsers = self.Generate()
-
-        for sub in subparsers:
+        
+        for sub in self.Generate():
             self.Subparser(sub)
 
         self.Optional(parser, True)
@@ -99,7 +100,7 @@ class Parsing(object):
             parser.print_help()
             raise SystemExit
 
-        #self.args.func()
+        self.args.func()
 
 
     def Generate(self): # Subparsers are defined here with the following syntax
@@ -148,7 +149,7 @@ class Parsing(object):
 
         del parsers['_name'], parsers['_help']
 
-        for each in parsers:
+        for each in sorted(parsers):
             positional = subparser.add_parser(each, help=parsers[each]['help'], add_help=False)
             positional.set_defaults(func=parsers[each]['func'])
             self.Optional(positional)
@@ -225,37 +226,41 @@ class Generate(object):
 
     def BashCompletion():
 
-        with open('/home/%s/.bashrc' % getpass.getuser(), 'w') as bashrc:
+        parsers = OrderedDict()
 
-            bashrc.write('alias im-a-py=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
+        for parser in Parsing.Generate(None): # Structures the dictionary into a more malleable format
+            parsers[parser['_name']] = [k for k,v in parser.items() if not k.startswith('_')]
 
-        if not os.path.isdir('/etc/bash_completion.d/'):
-            os.makedirs('/etc/bash_completion.d/')
+        #with open('/home/%s/.bashrc' % getuser(), 'w') as bashrc:
+        #    bashrc.write('alias {0}=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
 
-        with open('/etc/bash_completion.d/im-a-py', 'w') as imapy:
-            imapy.write(dedent('''\
-                _im-a-py()
-                {
+        #if not os.path.isdir('/etc/bash_completion.d/'):
+        #    os.makedirs('/etc/bash_completion.d/')
+
+        with open('/etc/bash_completion.d/{}'.format(__file__.strip()), 'w') as openbash:
+            openbash.write(dedent('''\
+                _{0}()
+                {{
                     local cur prev opts
                     COMPREPLY=()
-                    cur="${COMP_WORDS[COMP_CWORD]}"
-                    prev="${COMP_WORDS[COMP_CWORD-1]}"
-                    serv="install radio iptv database multi-equip"
+                    cur="${{COMP_WORDS[COMP_CWORD]}}"
+                    prev="${{COMP_WORDS[COMP_CWORD-1]}}"
+                    serv="{1}"
                     pack="bash-completion"
                     opts="--help --verbose --version"
-                    if [[ ${cur} == -* ]] ; then
-                        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+                    if [[ ${{cur}} == -* ]] ; then
+                        COMPREPLY=( $(compgen -W "${{opts}}" -- ${{cur}}) )
                         return 0
-                    elif [[ $prev == im-a-py ]] ; then
-                        COMPREPLY=( $(compgen -W "${serv}" -- ${cur}) )
+                    elif [[ $prev == {0} ]] ; then
+                        COMPREPLY=( $(compgen -W "${{serv}}" -- ${{cur}}) )
                         return 0
-                    elif [[ ${prev} == "install" ]] ; then
-                        COMPREPLY=( $(compgen -W "${pack}" -- ${cur}) )
+                    elif [[ ${{prev}} == "install" ]] ; then
+                        COMPREPLY=( $(compgen -W "${{pack}}" -- ${{cur}}) )
                         return 0
                     fi
-                }
-                complete -F _im-a-py im-a-py
-                '''))
+                }}
+                complete -F _{0} {0}
+                '''.format(__file__, ' '.join(parsers.keys()), )))
 
 
     def Conf():
