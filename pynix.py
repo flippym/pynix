@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#
+# Pynix Framework
+# 
 
 __author__ = "Frederico Martins"
 __license__ = "GPLv3"
@@ -7,9 +9,12 @@ __version__ = 1.0
 import sys
 
 try:
+    assert sys.version_info >= (3,0)
     from __main__ import __file__, __version__
 except ImportError:
     pass
+except AssertionError:
+    raise SystemExit('Python 3.0 or later is needed to run Pynix\n')
 
 from argparse import ArgumentParser, SUPPRESS, RawDescriptionHelpFormatter
 from collections import OrderedDict
