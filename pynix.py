@@ -219,7 +219,7 @@ class Logging(object): # Consider loading from yaml file
         trace = ''.join(format_tb(trace))
 
         self.LogWrite('Uncaught exception: %s' % (error.__name__), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
-        self.LogWrite('Uncaught exception\nTraceback (most recent call last):\n%s%s: %s' % (trace, error.__name__, value), 'debug')
+        self.LogWrite('Uncaught exception\nTraceback (most recent call last):\n{0}{1}: {2}'.format(trace, error.__name__, value), 'debug')
 
 
 class Generate(object):
@@ -269,19 +269,19 @@ class Generate(object):
         newyaml = path.realpath(__file__).replace('.py', '.yaml')
 
         if path.isfile(newyaml):
-            LogWrite("The file %s already exists." % newyaml)
+            LogWrite("The file {} already exists.".format(newyaml))
             raise SystemExit
 
         with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
             openyaml.write(dedent('''\
                 log:
-                    path: /var/log/%s/%s
+                    path: /var/log/{0}/{1}
                     level: info
                 other:
                     something:
                         - some other things
                     check: yes
-                ''' % (Initiate.progname.split('.py')[0], Initiate.progname.replace('.py', '.log')))) # change % to format
+                ''').format(path.splitext(Initiate.progname), Initiate.progname.replace('.py', '.log')))
 
 
     def Log():
