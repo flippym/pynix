@@ -24,7 +24,7 @@ from yaml import load_all, scanner
 
 class Initiate(object):
 
-    progname = __file__.rpartition('/')[2]
+    progname = path.basename(__file__)
     loglevel = {'debug':10, 'info':20, 'warning':30, 'error':40, 'fatal':50}
 
     def __init__(self):
@@ -226,18 +226,16 @@ class Generate(object):
 
     def BashCompletion():
 
-        parsers = OrderedDict()
+        parsers, subparsers = OrderedDict(), set()
 
         for parser in Parsing.Generate(None): # Structures the dictionary into a more malleable format
             parsers[parser['_name']] = [k for k,v in parser.items() if not k.startswith('_')]
 
-        #with open('/home/%s/.bashrc' % getuser(), 'w') as bashrc:
-        #    bashrc.write('alias {0}=\'python3 %s\'\n\nfor file in /etc/bash_completion.d/* ; do\n    source "$file"\ndone' % __file__)
+        for name in parsers.keys(): # Dynamic bash completion subparser syntax
+            variables = ' '.join(sorted(parsers[name]))
+            subparsers.add('{0}="{1}"'.format(name, variables))
 
-        #if not os.path.isdir('/etc/bash_completion.d/'):
-        #    os.makedirs('/etc/bash_completion.d/')
-
-        with open('/etc/bash_completion.d/{}'.format(__file__.strip()), 'w') as openbash:
+        with open('/etc/bash_completion.d/{}'.format(path.splitext(Initiate.progname)[0]), 'w') as openbash:
             openbash.write(dedent('''\
                 _{0}()
                 {{
@@ -246,7 +244,7 @@ class Generate(object):
                     cur="${{COMP_WORDS[COMP_CWORD]}}"
                     prev="${{COMP_WORDS[COMP_CWORD-1]}}"
                     serv="{1}"
-                    pack="bash-completion"
+                    {2}
                     opts="--help --verbose --version"
                     if [[ ${{cur}} == -* ]] ; then
                         COMPREPLY=( $(compgen -W "${{opts}}" -- ${{cur}}) )
@@ -254,13 +252,16 @@ class Generate(object):
                     elif [[ $prev == {0} ]] ; then
                         COMPREPLY=( $(compgen -W "${{serv}}" -- ${{cur}}) )
                         return 0
-                    elif [[ ${{prev}} == "install" ]] ; then
-                        COMPREPLY=( $(compgen -W "${{pack}}" -- ${{cur}}) )
-                        return 0
+                    else
+                        for each in $serv ; do
+                            if [[ ${{prev}} == $each ]] ; then
+                                COMPREPLY=( $(compgen -W "${{!each}}" -- ${{cur}}) )
+                                return 0
+                            fi
+                        done
                     fi
                 }}
-                complete -F _{0} {0}
-                '''.format(__file__, ' '.join(parsers.keys()), )))
+                complete -F _{0} {0}''').format(Initiate.progname, ' '.join(parsers.keys()), '\n    '.join(subparsers)))
 
 
     def Conf():
@@ -335,6 +336,3 @@ class Script(object):
     def Run():
 
         pass
-
-
-Initiate()
