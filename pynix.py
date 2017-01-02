@@ -11,8 +11,10 @@ import sys
 try:
     assert sys.version_info >= (3,0)
     from __main__ import __file__, __version__
+
 except ImportError:
     pass
+
 except AssertionError:
     raise SystemExit('Python 3.0 or later is needed to run Pynix\n')
 
@@ -24,8 +26,12 @@ from os import makedirs, path
 from sys import argv
 from textwrap import dedent
 from traceback import format_tb
-from yaml import load_all, scanner
+from yaml import load_all, scanner # Trade YAML for ConfigParser
 
+
+#globalargs = {}
+
+# manual creation based on annotations
 
 class Initiate(object):
 
@@ -37,9 +43,11 @@ class Initiate(object):
         self.Parser = Parsing()
         #self.Reading = Reading()
         #Concatenate() # Put all Parsing arguments and Reading parameters as the same variable, giving priority to parser
-        #self.Logger = Logging(self.Parser.args)
 
-        #sys.excepthook = self.Logger.ErrHandler
+        self.Logger = Logging(self.Parser.args.log, self.Parser.args.event)
+        sys.excepthook = self.Logger.ErrHandler
+
+        self.Parser.args.func(self.Logger)
 
         #if self.args.yaml:
         #    self.Reading()
@@ -66,34 +74,37 @@ class Initiate(object):
                             # do something
 
         except scanner.ScannerError as error:
-            LogWrite("Syntax error in YAML file: %s" % error)
+            self.Logger.LogHandler("Syntax error in YAML file: {0}".format(error))
             raise SystemExit
 
         except IOError:
-            LogWrite("No such file %s" % self.args.yaml)
+            self.Logger.LogHandler("No such file {0}".format(self.args.yaml))
             raise SystemExit
 
         except KeyError as error: # Escape other errors
-            LogWrite("Warning, key %s in '%s' not defined" % (error, each))
+            self.Logger.LogHandler("Warning, key {0} in '{1}' is not defined".format(error, each))
 
 
 class Parsing(object):
 
+    positional = []
+
     def __init__(self):
         
         parser = ArgumentParser(prog='python3 {}'.format(Initiate.progname), add_help=False, 
-                                formatter_class=RawDescriptionHelpFormatter, description = dedent('''\
-                                    Pynix RHEL Framework !
-                                    ----------------------
-                                      RHEL framework for
-                                      running daemons 
-                                      and scripts.
-                                    '''), epilog = dedent('''\
-                                    Check the git repository at https://github.com/flippym/pynix,
-                                    for more information about usage, documentation and bug report.'''))
+            formatter_class=RawDescriptionHelpFormatter, description = dedent('''\
+                 Pynix Framework
+                -----------------
+                  RHEL framework
+                  for running
+                  daemons and
+                  scripts.
+                '''), epilog = dedent('''\
+                Check the git repository at https://github.com/flippym/pynix,
+                for more information about usage, documentation and bug report.'''))
 
         self.subparser = parser.add_subparsers(title='Positional', help='To see available options, use --help with each command', 
-                                               metavar='<command>')
+            metavar='<command>')
         
         for sub in self.Generate():
             self.Subparser(sub)
@@ -105,45 +116,49 @@ class Parsing(object):
             parser.print_help()
             raise SystemExit
 
-        self.args.func()
 
-
-    def Generate(self): # Subparsers are defined here with the following syntax
+    def Generate(self, pos=None): # Subparsers are defined here with the following syntax
         
-        generate = {'_name':'generate', '_help':'Generate template files',
-                    'bash-completion':
-                        {'help':'Generate bash-completion for program', 'func':Generate.BashCompletion},
-                    'conf':
-                        {'help':'Generate YAML template file for optional configurations', 'func':Generate.Conf},
-                    'log':
-                        {'help':'Generate YAML template file for log configurations', 'func':Generate.Log},
-                    'spec':
-                        {'help':'Generate SPEC template file for RPM building', 'func':Generate.Spec},
-                    'unit':
-                        {'help':'Generate UNIT template file for integration with systemd', 'func':Generate.Unit},
-                   }
+        if not pos:
+            generate = {'_name':'generate', '_help':'Generate program files',
+                        'bash-completion':
+                            {'help':'Generate bash-completion for program', 'func':Generate.BashCompletion},
+                        'conf':
+                            {'help':'Generate YAML template file for optional configurations', 'func':Generate.Conf},
+                        'log':
+                            {'help':'Generate YAML template file for log configurations', 'func':Generate.Log},
+                        'spec':
+                            {'help':'Generate SPEC template file for RPM building', 'func':Generate.Spec},
+                        'unit':
+                            {'help':'Generate UNIT template file for integration with systemd', 'func':Generate.Unit},
+                       }
 
-        daemon = {'_name':'daemon', '_help':'Daemon program management',
-                    'disable':
-                        {'help':'Remove daemon from system startup', 'func':Daemon.Disable},
-                    'enable':
-                        {'help':'Add daemon to system startup', 'func':Daemon.Enable},
-                    'reload':
-                        {'help':'Reload daemon configurations', 'func':Daemon.Reload},
-                    'start':
-                        {'help':'Initiate program as daemon', 'func':Daemon.Start},
-                    'status':
-                        {'help':'Check daemon running status', 'func':Daemon.Status},
-                    'stop':
-                        {'help':'Stop daemon program', 'func':Daemon.Stop},
-                 }
+            daemon = {'_name':'daemon', '_help':'Daemon program management',
+                        'disable':
+                            {'help':'Remove daemon from system startup', 'func':Daemon.Disable},
+                        'enable':
+                            {'help':'Add daemon to system startup', 'func':Daemon.Enable},
+                        'reload':
+                            {'help':'Reload daemon configurations', 'func':Daemon.Reload},
+                        'start':
+                            {'help':'Initiate program as daemon', 'func':Daemon.Start},
+                        'status':
+                            {'help':'Check daemon running status', 'func':Daemon.Status},
+                        'stop':
+                            {'help':'Stop daemon program', 'func':Daemon.Stop},
+                     }
 
-        script = {'_name':'script', '_help':'Script program management',
-                    'run':
-                        {'help':'Initiate program as a script', 'func':Script.Run},
-                 }
+            script = {'_name':'script', '_help':'Script program management',
+                        'run':
+                            {'help':'Initiate program as a script', 'func':Script.Run},
+                     }
 
-        return generate, daemon, script
+            for each in [generate, daemon, script]:
+                self.positional.append(each)
+
+            return self.positional
+
+        pass
 
 
     def Subparser(self, parsers: dict) -> None:
@@ -164,58 +179,61 @@ class Parsing(object):
 
     def Optional(self, parser: object, version=False) -> None:
 
+        loglevel = ', '.join(sorted(Initiate.loglevel.keys(), key=Initiate.loglevel.get))
+
         optional = parser.add_argument_group('Optional')
         optional.add_argument('-c', '--conf', metavar='file', type=str, help='Configuration file path for parameters configuration', required=False)
-        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(', '.join(Initiate.loglevel.keys())), required=False, default='info')
+        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(loglevel), required=False, default='info')
         optional.add_argument('-l', '--log', metavar='file', type=str, help='Redirect all output to log file for event logging', required=False)
         optional.add_argument('-h', '--help', action='help', help='Show this help message')
 
         if version:
             optional.add_argument('-v', '--version', action='version', version='{0} {1}'.format(Initiate.progname, __version__), help='Show program version')
 
+        # list = argv.remove startswith('--')
         #if parser.getname() == 'generate':
         #    optional.add_argument('-p', '--path', metavar='file', type=str, help='Specify path and file name for file generation')
 
 
 class Logging(object): # Consider loading from yaml file
 
-    def __init__(self, args):
+    def __init__(self, logpath, eventlevel):
 
-        #path.realpath(args.log).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
-
+        #path.realpath(logpath).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
         self.logger = getLogger(__name__)
 
-        try:
-            handler = FileHandler(args.log)
-            formatter = Formatter(fmt='%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%d %b %Y %H:%M:%S')
+        if logpath:
+            try:
+                handler = FileHandler(logpath)
+                formatter = Formatter(fmt='%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%d %b %Y %H:%M:%S')
 
-            if args.event:
-                level = Initiate.loglevel[args.event]
-                self.logger.setLevel(level)
-                handler.setLevel(level)
+                if args.event:
+                    level = Initiate.loglevel[eventlevel]
+                    self.logger.setLevel(level)
+                    handler.setLevel(level)
 
-            else:
-                self.logger.setLevel(Initiate.loglevel['info'])
-                handler.setLevel(Initiate.loglevel['info'])
-        
-        except (ValueError, NameError):
-            LogWrite("Unknown log level in YAML file")
-            raise SystemExit
+                else:
+                    self.logger.setLevel(Initiate.loglevel['info'])
+                    handler.setLevel(Initiate.loglevel['info'])
+            
+            except (ValueError, NameError):
+                self.LogHandler("Unknown log level in YAML file")
+                raise SystemExit
 
-        except IOError:
-            LogWrite("Permission denied to create log file in specified path")
-            raise SystemExit
+            except IOError:
+                self.LogHandler("Permission denied to create log file in specified path")
+                raise SystemExit
 
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
 
-    def LogWrite(self, string, level = 'info'):
+    def LogHandler(self, string, level = 'info'):
 
         if self.logger:
             self.logger.log(Initiate.loglevel[level], string)
 
-        else: #level == args.event: # When the event level is set, it will only print above levels
+        else: #level == eventlevel: # When the event level is set, it will only print above levels
             print(string)
 
 
@@ -223,18 +241,18 @@ class Logging(object): # Consider loading from yaml file
 
         trace = ''.join(format_tb(trace))
 
-        self.LogWrite('Uncaught exception: %s' % (error.__name__), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
-        self.LogWrite('Uncaught exception\nTraceback (most recent call last):\n{0}{1}: {2}'.format(trace, error.__name__, value), 'debug')
-
+        self.LogHandler('Uncaught exception: {0}\nTraceback (most recent call last):\n{1}{0}: {2}'.format(error.__name__, trace,
+            value), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
+        
 
 class Generate(object):
 
-    def BashCompletion():
+    def BashCompletion(logger):
 
         parsers, subparsers = OrderedDict(), set()
 
         for parser in Parsing.Generate(None): # Structures the dictionary into a more malleable format
-            parsers[parser['_name']] = [k for k,v in parser.items() if not k.startswith('_')]
+            parsers[parser['_name']] = [k for k,v in parser.items() if not k.startswith('_')] # Get from Parsing().parser, instead Parsing.Generate() 
 
         for name in parsers.keys(): # Dynamic bash completion subparser syntax
             variables = ' '.join(sorted(parsers[name]))
@@ -269,12 +287,12 @@ class Generate(object):
                 complete -F _{0} {0}''').format(Initiate.progname, ' '.join(parsers.keys()), '\n    '.join(subparsers)))
 
 
-    def Conf():
+    def Conf(logger):
 
         newyaml = path.realpath(__file__).replace('.py', '.yaml')
 
         if path.isfile(newyaml):
-            LogWrite("The file {} already exists.".format(newyaml))
+            logger.LogHandler("The file {} already exists.".format(newyaml))
             raise SystemExit
 
         with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
@@ -286,58 +304,58 @@ class Generate(object):
                     something:
                         - some other things
                     check: yes
-                ''').format(path.splitext(Initiate.progname), Initiate.progname.replace('.py', '.log')))
+                ''').format(path.splitext(Initiate.progname)[0], Initiate.progname.replace('.py', '.log')))
 
 
-    def Log():
-
-        pass
-
-
-    def Spec():
+    def Log(logger):
 
         pass
 
 
-    def Unit():
+    def Spec(logger):
+
+        pass
+
+
+    def Unit(logger):
 
         pass
 
 
 class Daemon(object):
 
-    def Disable():
+    def Disable(logger):
 
         pass
 
 
-    def Enable():
+    def Enable(logger):
 
         pass
 
 
-    def Reload():
+    def Reload(logger):
 
         pass
 
 
-    def Start():
+    def Start(logger):
 
         pass
 
 
-    def Status():
+    def Status(logger):
 
         pass
 
 
-    def Stop():
+    def Stop(logger):
 
         pass
 
 
 class Script(object):
 
-    def Run():
+    def Run(logger):
 
         pass
