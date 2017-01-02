@@ -7,8 +7,8 @@ from pynix import Initiate
 
 pynix = Initiate()
 
-pynix.Logger.LogWrite('Starting script execution')
+pynix.log('Starting script execution')
 # ... Code goes here ...
 
 # ... Code goes here ...
-pynix.Logger.LogWrite('Script execution ended')
+pynix.log('Script execution ended')
