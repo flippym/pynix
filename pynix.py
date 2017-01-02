@@ -45,15 +45,14 @@ class Initiate(object):
         #Concatenate() # Put all Parsing arguments and Reading parameters as the same variable, giving priority to parser
 
         self.Logger = Logging(self.Parser.args.log, self.Parser.args.event)
+        self.log = self.Logger.LogHandler
+
         sys.excepthook = self.Logger.ErrHandler
 
         self.Parser.args.func(self.Logger)
 
         #if self.args.yaml:
         #    self.Reading()
-
-        #if self.args.log:
-        #    self.logger = self.Logging()
 
 
     def Reading(self):
@@ -85,7 +84,7 @@ class Initiate(object):
             self.Logger.LogHandler("Warning, key {0} in '{1}' is not defined".format(error, each))
 
 
-class Parsing(object):
+class Parsing(object): #Not fully functional, optional arguments are not parsed when before positional
 
     positional = []
 
@@ -182,9 +181,9 @@ class Parsing(object):
         loglevel = ', '.join(sorted(Initiate.loglevel.keys(), key=Initiate.loglevel.get))
 
         optional = parser.add_argument_group('Optional')
-        optional.add_argument('-c', '--conf', metavar='file', type=str, help='Configuration file path for parameters configuration', required=False)
-        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(loglevel), required=False, default='info')
-        optional.add_argument('-l', '--log', metavar='file', type=str, help='Redirect all output to log file for event logging', required=False)
+        optional.add_argument('-c', '--conf', metavar='file', type=str, help='Configuration file path for parameters configuration')
+        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(loglevel), default='info')
+        optional.add_argument('-l', '--log', metavar='file', type=str, help='Redirect all output to log file for event logging')
         optional.add_argument('-h', '--help', action='help', help='Show this help message')
 
         if version:
@@ -195,45 +194,43 @@ class Parsing(object):
         #    optional.add_argument('-p', '--path', metavar='file', type=str, help='Specify path and file name for file generation')
 
 
-class Logging(object): # Consider loading from yaml file
+class Logging(object): #Consider loading from yaml file
 
-    def __init__(self, logpath, eventlevel):
+    def __init__(self, logpath, level):
 
-        #path.realpath(logpath).rpartition('/')[0] # path.realpath to prevent error when the full path ain't specified
-        self.logger = getLogger(__name__)
+        self.level = level
 
         if logpath:
             try:
+                self.logger = getLogger(__name__)
                 handler = FileHandler(logpath)
                 formatter = Formatter(fmt='%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%d %b %Y %H:%M:%S')
+                level = Initiate.loglevel[level]
 
-                if args.event:
-                    level = Initiate.loglevel[eventlevel]
-                    self.logger.setLevel(level)
-                    handler.setLevel(level)
+                handler.setLevel(level)
+                handler.setFormatter(formatter)
 
-                else:
-                    self.logger.setLevel(Initiate.loglevel['info'])
-                    handler.setLevel(Initiate.loglevel['info'])
-            
-            except (ValueError, NameError):
-                self.LogHandler("Unknown log level in YAML file")
-                raise SystemExit
+                self.logger.setLevel(level)
+                self.logger.addHandler(handler)
 
             except IOError:
-                self.LogHandler("Permission denied to create log file in specified path")
+                print("Permission denied to create log file in specified path")
                 raise SystemExit
 
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+            except NameError as e:
+                print("Unable to log to file {0}, {1}".format(logpath, e))
+                raise SystemExit
+
+        else:
+            self.logger = None
 
 
     def LogHandler(self, string, level = 'info'):
-
+        
         if self.logger:
             self.logger.log(Initiate.loglevel[level], string)
 
-        else: #level == eventlevel: # When the event level is set, it will only print above levels
+        elif Initiate.loglevel[level] >= Initiate.loglevel[self.level]: # Restrict ouput based on level
             print(string)
 
 
@@ -242,7 +239,7 @@ class Logging(object): # Consider loading from yaml file
         trace = ''.join(format_tb(trace))
 
         self.LogHandler('Uncaught exception: {0}\nTraceback (most recent call last):\n{1}{0}: {2}'.format(error.__name__, trace,
-            value), 'error') # Keep in mind this description methodology, info, warning, error, fatal -short; debug -long
+            value), 'error')
         
 
 class Generate(object):
@@ -295,7 +292,7 @@ class Generate(object):
             logger.LogHandler("The file {} already exists.".format(newyaml))
             raise SystemExit
 
-        with open(newyaml, 'w') as openyaml: # Change log name and dir to name invoked in other script, not pynix
+        with open(newyaml, 'w') as openyaml: #Change log name and dir to name invoked in other script, not pynix
             openyaml.write(dedent('''\
                 log:
                     path: /var/log/{0}/{1}
