@@ -23,7 +23,6 @@ from collections import OrderedDict
 from getpass import getuser
 from logging import FileHandler, Formatter, getLogger
 from os import makedirs, path
-from sys import argv
 from textwrap import dedent
 from traceback import format_tb
 from yaml import load_all, scanner # Trade YAML for ConfigParser
@@ -113,7 +112,7 @@ class Parsing(object): #Not fully functional, optional arguments are not parsed 
         self.Optional(parser, True)
         self.args = parser.parse_args()
 
-        if len(argv) == 1: # Returns the help message in case no arguments are provided
+        if len(sys.argv) == 1: # Returns the help message in case no arguments are provided
             parser.print_help()
             raise SystemExit
 
@@ -162,38 +161,43 @@ class Parsing(object): #Not fully functional, optional arguments are not parsed 
         pass
 
 
-    def Subparser(self, parsers: dict) -> None:
+    def Subparser(self, parsers: dict, generate=False) -> None:
 
         parser = self.subparser.add_parser(parsers['_name'], help=parsers['_help'], add_help=False)
         subparser = parser.add_subparsers(title='Positional', metavar='<subcommand>')
         subparser.required = True
+
+        if parsers['_name'] == 'generate':
+            generate = True
 
         del parsers['_name'], parsers['_help']
 
         for each in sorted(parsers):
             positional = subparser.add_parser(each, help=parsers[each]['help'], add_help=False)
             positional.set_defaults(func=parsers[each]['func'])
-            self.Optional(positional)
+            self.Optional(positional, generate=generate)
 
         self.Optional(parser)
 
 
-    def Optional(self, parser: object, version=False) -> None:
+    def Optional(self, parser: object, version=False, generate=False) -> None:
 
         loglevel = ', '.join(sorted(Initiate.loglevel.keys(), key=Initiate.loglevel.get))
 
         optional = parser.add_argument_group('Optional')
         optional.add_argument('-c', '--conf', metavar='file', type=str, help='Configuration file path for parameters configuration')
-        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), help='Event log level: {}\n(default: info)'.format(loglevel), default='info')
+        optional.add_argument('-e', '--event', metavar='lvl', choices=Initiate.loglevel.keys(), default='info',
+            help='Event log level: {}\n(default: info)'.format(loglevel))
         optional.add_argument('-l', '--log', metavar='file', type=str, help='Redirect all output to log file for event logging')
+
+        if generate:
+            optional.add_argument('-p', '--path', metavar='file', type=str, help='Specify path and file name for file generation')
+
         optional.add_argument('-h', '--help', action='help', help='Show this help message')
 
         if version:
-            optional.add_argument('-v', '--version', action='version', version='{0} {1}'.format(Initiate.progname, __version__), help='Show program version')
-
-        # list = argv.remove startswith('--')
-        #if parser.getname() == 'generate':
-        #    optional.add_argument('-p', '--path', metavar='file', type=str, help='Specify path and file name for file generation')
+            optional.add_argument('-v', '--version', action='version', version='{0} {1}'.format(Initiate.progname, __version__),
+                help='Show program version')
 
 
 class Logging(object): #Consider loading from yaml file
