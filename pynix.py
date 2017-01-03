@@ -41,6 +41,8 @@ class Initiate(object):
     def __init__(self):
 
         self.Parser = Parsing()
+        #self.parse = self.Parser.Generate
+
         #self.Reading = Reading()
         #Concatenate() # Put all Parsing arguments and Reading parameters as the same variable, giving priority to parser
 
@@ -152,7 +154,7 @@ class Parsing(object): #Not fully functional, optional arguments are not parsed 
                             {'help':'Initiate program as a script', 'func':Script.Run},
                      }
 
-            for each in [generate, daemon, script]:
+            for each in [generate, daemon, script]: # remove, trade for extend()
                 self.positional.append(each)
 
             return self.positional
@@ -246,6 +248,7 @@ class Generate(object):
 
     def BashCompletion(logger):
 
+        logger.LogHandler("Generating new bash completion file")
         parsers, subparsers = OrderedDict(), set()
 
         for parser in Parsing.Generate(None): # Structures the dictionary into a more malleable format
@@ -286,10 +289,11 @@ class Generate(object):
 
     def Conf(logger):
 
+        logger.LogHandler("Generating new template configuration file")
         newyaml = path.realpath(__file__).replace('.py', '.yaml')
 
         if path.isfile(newyaml):
-            logger.LogHandler("The file {} already exists.".format(newyaml))
+            logger.LogHandler("The file {} already exists".format(newyaml), 'error')
             raise SystemExit
 
         with open(newyaml, 'w') as openyaml: #Change log name and dir to name invoked in other script, not pynix
@@ -306,39 +310,39 @@ class Generate(object):
 
     def Log(logger):
 
-        pass
+        logger.LogHandler("Generating new template log configuration file")
 
 
     def Spec(logger):
 
-        pass
+        logger.LogHandler("Generating new template spec file")
 
 
     def Unit(logger):
 
-        pass
+        logger.LogHandler("Generating new template unit file")
 
 
 class Daemon(object):
 
     def Disable(logger):
 
-        pass
+        logger.LogHandler("Disabling running daemon")
 
 
     def Enable(logger):
 
-        pass
+        logger.LogHandler("Enabling running daemon")
 
 
     def Reload(logger):
 
-        pass
+        logger.LogHandler("Reloading running daemon")
 
 
     def Start(logger):
 
-        pass
+        logger.LogHandler("Starting daemon")
 
 
     def Status(logger):
@@ -348,11 +352,11 @@ class Daemon(object):
 
     def Stop(logger):
 
-        pass
+        logger.LogHandler("Stoping running daemon")
 
 
 class Script(object):
 
     def Run(logger):
 
-        pass
+        logger.LogHandler("Starting script")
